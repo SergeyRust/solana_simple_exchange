@@ -205,11 +205,11 @@ describe("Test1", async () => {
 
     it("Exchange sol to USDC", async () => {
 
-        const exchangeCustomAssociatedTokenAddress = await getAssociatedTokenAddress(
+        const exchangeUsdcAssociatedTokenAddress = await getAssociatedTokenAddress(
             CUSTOM_MINT,
             exchangeProgram
         );
-        console.log("exchangeCustomAssociatedTokenAddress : %s ", exchangeCustomAssociatedTokenAddress);
+        console.log("exchangeUsdcAssociatedTokenAddress : %s ", exchangeUsdcAssociatedTokenAddress);
         const programAddress = findProgramAddressSync(
             [
                 exchangeWallet.publicKey.toBuffer(),
@@ -218,11 +218,13 @@ describe("Test1", async () => {
             ],
             exchangeProgram
         );
-        console.log("program address : %s , bump_seed: %d", programAddress.at(0), programAddress.at(1));
+        console.log("USDC program address : %s , bump_seed: %d", programAddress.at(0), programAddress.at(1));
 
         const instructionData = borsh.struct([
             borsh.u8('variant'),
             borsh.u64('amount'),
+            borsh.str('pda_seed'),
+            borsh.u8('bump_seed')
         ])
         const buffer = Buffer.alloc(1000);
         const value = new anchor.BN(50000000);
@@ -237,15 +239,15 @@ describe("Test1", async () => {
         let ix = new TransactionInstruction({
             keys: [
                 {pubkey: token_program_id, isSigner: false, isWritable: false},
-                {pubkey: exchangeProgram, isSigner: true, isWritable: false},
+                {pubkey: exchangeProgram, isSigner: false, isWritable: false},
                 {pubkey: NATIVE_MINT, isSigner: false, isWritable: false},
                 {pubkey: USDC_MINT, isSigner: false, isWritable: false},
                 {pubkey: clientWallet.publicKey, isSigner: true, isWritable: true},
                 {pubkey: clientWrappedSolAccount, isSigner: false, isWritable: true},
-                {pubkey: clientCustomAssociatedTokenAccount, isSigner: false, isWritable: true},
+                {pubkey: clientUsdcAssociatedTokenAccount, isSigner: false, isWritable: true},
                 {pubkey: exchangeWallet.publicKey, isSigner: true, isWritable: true},
                 {pubkey: exchangeWrappedSolAccount, isSigner: false, isWritable: true},
-                {pubkey: exchangeCustomAssociatedTokenAddress, isSigner: false, isWritable: true},
+                {pubkey: exchangeUsdcAssociatedTokenAddress, isSigner: false, isWritable: true},
                 {pubkey: solToUsdDataFeedAccount, isSigner: false, isWritable: false},
                 {pubkey: usdcToUsdDataFeedAccount, isSigner: false, isWritable: false},
                 {pubkey: chainLinkProgramId, isSigner: false, isWritable: false},
@@ -281,37 +283,87 @@ describe("Test1", async () => {
         //     }
         // );
         // console.log("transaction: {}", committed)
-    }
-    );
+    });
+
+    it("Exchange USDC to sol", async () => {
+
+        const exchangeUsdcAssociatedTokenAddress = await getAssociatedTokenAddress(
+            CUSTOM_MINT,
+            exchangeProgram
+        );
+        console.log("exchangeUsdcAssociatedTokenAddress : %s ", exchangeUsdcAssociatedTokenAddress);
+        const programAddress = findProgramAddressSync(
+            [
+                exchangeWallet.publicKey.toBuffer(),
+                token_program_id.toBuffer(),
+                CUSTOM_MINT.toBuffer(),
+            ],
+            exchangeProgram
+        );
+        console.log("USDC program address : %s , bump_seed: %d", programAddress.at(0), programAddress.at(1));
+
+        const instructionData = borsh.struct([
+            borsh.u8('variant'),
+            borsh.u64('amount'),
+            borsh.str('pda_seed'),
+            borsh.u8('bump_seed')
+        ])
+        const buffer = Buffer.alloc(1000);
+        const value = new anchor.BN(5000000);  // 5 usdc
+        instructionData.encode(
+            {
+                variant: 3,
+                amount : value,
+            },
+            buffer);
+        const instructionBuffer = buffer.slice(0, instructionData.getSpan(buffer));
+
+        let ix = new TransactionInstruction({
+            keys: [
+                {pubkey: token_program_id, isSigner: false, isWritable: false},
+                {pubkey: exchangeProgram, isSigner: true, isWritable: false},
+                {pubkey: USDC_MINT, isSigner: false, isWritable: false},
+                {pubkey: NATIVE_MINT, isSigner: false, isWritable: false},
+                {pubkey: clientWallet.publicKey, isSigner: true, isWritable: true},
+                {pubkey: clientUsdcAssociatedTokenAccount, isSigner: false, isWritable: true},
+                {pubkey: clientWrappedSolAccount, isSigner: false, isWritable: true},
+                {pubkey: exchangeWallet.publicKey, isSigner: true, isWritable: true},
+                {pubkey: exchangeUsdcAssociatedTokenAddress, isSigner: false, isWritable: true},
+                {pubkey: exchangeWrappedSolAccount, isSigner: false, isWritable: true},
+                {pubkey: solToUsdDataFeedAccount, isSigner: false, isWritable: false},
+                {pubkey: usdcToUsdDataFeedAccount, isSigner: false, isWritable: false},
+                {pubkey: chainLinkProgramId, isSigner: false, isWritable: false},
+            ],
+            data: instructionBuffer,
+            programId: exchangeProgram,
+        });
+
+        // const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
+        //     units: 1000000
+        // });
+        let tx = new Transaction();
+        //tx.add(modifyComputeUnits);
+        //tx.recentBlockhash = (await connection.getLatestBlockhash('finalized')).blockhash;
+        tx.feePayer = payer.publicKey;
+        tx.add(ix);
+
+        let sim_result = await connection.simulateTransaction(tx);
+        console.log("logs : {}", sim_result.value.logs);
+
+        // let tx = new Transaction();
+        // tx.recentBlockhash = (await connection.getLatestBlockhash('finalized')).blockhash;
+        // tx.feePayer = clientWallet.publicKey;
+        // tx.add(ix);
+        //
+        // let committed = await sendAndConfirmTransaction(
+        //     connection,
+        //     tx,
+        //     [clientWallet, exchangeWallet],
+        //     {
+        //         skipPreflight: true,
+        //         preflightCommitment : "finalized"
+        //     }
+        // );
+        // console.log("transaction: {}", committed)
+    });
 });
-
-
-
-// const usdcTokenAcc = await createAccount(
-//     connection,
-//     exchangeWallet,
-//     USDC_MINT,
-//     exchangeWallet.publicKey
-// );
-// console.log("usdcTokenAcc pubkey : %d", usdcTokenAcc)
-
-// let tx = new Transaction().add(
-//     createApproveCheckedInstruction(
-//         exchangeUsdcVaultAccount, // token account
-//         USDC_MINT, // mint
-//         exchangeWallet, // delegate
-//         exchangeUsdcAssociatedTokenAccount, // owner of token account
-//         1e6, // amount, if your deciamls is 8, 10^8 for 1 token
-//         6 // decimals
-//     )
-// );
-// tx.recentBlockhash = (await connection.getLatestBlockhash('finalized')).blockhash;
-// tx.feePayer = payer.publicKey;
-// //let sim_result = await connection.simulateTransaction(tx);
-// // console.log("logs : {}", sim_result.value.logs);
-// let result = await sendAndConfirmTransaction(
-//     connection,
-//     tx,
-//     [payer]
-// );
-// console.log("signature : {}", result);

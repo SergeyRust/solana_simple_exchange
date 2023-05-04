@@ -236,11 +236,12 @@ impl Processor {
         &chainlink_program.clone(),
         &token_B_data_feed_account.clone()
     )?;
-    msg!["exchanging tokens : token A: {}, token B : {}", &token_A.1, &token_B.1];
 
     let lamport_price = token_A.0 / f64::from_u64(LAMPORTS_PER_SOL).unwrap();
     let token_A_amount = amount;
     let token_B_amount = ((f64::from_u64(amount).unwrap() * lamport_price) / token_B.0) as u64;
+    msg!["exchanging tokens : token A: {}, amount={}, token B : {}, amount={}",
+                              &token_A.1, &token_A_amount / LAMPORTS_PER_SOL, &token_B.1,  &token_B_amount];
 
     let from_client_ix = &token_instruction::transfer(
         token_program.key,
@@ -262,7 +263,7 @@ impl Processor {
         ]
     )?;
 
-    let (pda, bump_seed) = Pubkey::find_program_address(
+    let (_, bump_seed) = Pubkey::find_program_address(
         &[
             &exchange_wallet.key.to_bytes(),
             &token_program.key.to_bytes(),
@@ -270,8 +271,7 @@ impl Processor {
         ],
         program_id
     );
-    msg!["pda: {}, bump_seed : {}", &pda, &bump_seed];
-
+    //msg!("exchange_associated_token_B_account : {}, client_associated_token_B_account : {}, ");
     let to_client_ix = &token_instruction::transfer(
         token_program.key,
         exchange_associated_token_B_account.key,
@@ -282,6 +282,7 @@ impl Processor {
     )?;
     invoke_signed(to_client_ix,
                   &[
+                      mint_B.clone(),
                       exchange_associated_token_B_account.clone(),
                       client_associated_token_B_account.clone(),
                       exchange_program_account.clone(),
@@ -329,11 +330,12 @@ impl Processor {
             &chainlink_program.clone(),
             &token_B_data_feed_account.clone()
         )?;
-        msg!["exchanging tokens : token A: {}, token B : {}", &token_A.1, &token_B.1];
 
         let lamport_price = token_B.0 / f64::from_u64(LAMPORTS_PER_SOL).unwrap();
         let token_A_amount = amount;
         let token_B_amount = ((f64::from_u64(amount).unwrap()) / token_B.0 * lamport_price) as u64;
+        msg!["exchanging tokens : token A: {}, amount={}, token B : {}, amount={}",
+                              &token_A.1, &token_A_amount, &token_B.1,  &token_B_amount / LAMPORTS_PER_SOL];
 
         let from_client_ix = &token_instruction::transfer(
             token_program.key,
@@ -355,7 +357,7 @@ impl Processor {
             ]
         )?;
 
-        let (pda, bump_seed) = Pubkey::find_program_address(
+        let (_, bump_seed) = Pubkey::find_program_address(
             &[
                 &exchange_wallet.key.to_bytes(),
                 &token_program.key.to_bytes(),
@@ -363,7 +365,6 @@ impl Processor {
             ],
             program_id
         );
-        msg!["pda: {}, bump_seed : {}", &pda, &bump_seed];
 
         let to_client_ix = &token_instruction::transfer(
             token_program.key,
@@ -421,10 +422,11 @@ impl Processor {
             &chainlink_program.clone(),
             &token_B_data_feed_account.clone()
         )?;
-        msg!["exchanging tokens : token A: {}, token B : {}", &token_A.1, &token_B.1];
 
         let token_A_amount = amount;
         let token_B_amount = ((f64::from_u64(amount).unwrap()) / token_B.0) as u64;
+        msg!["exchanging tokens : token A: {}, amount={}, token B : {}, amount={}",
+                                  &token_A.1, &token_B.1, &token_A_amount, &token_B_amount];
 
         let from_client_ix = &token_instruction::transfer(
             token_program.key,
@@ -446,7 +448,7 @@ impl Processor {
             ]
         )?;
 
-        let (pda, bump_seed) = Pubkey::find_program_address(
+        let (_, bump_seed) = Pubkey::find_program_address(
             &[
                 &exchange_wallet.key.to_bytes(),
                 &token_program.key.to_bytes(),
@@ -455,7 +457,6 @@ impl Processor {
             ],
             program_id
         );
-        msg!["pda: {}, bump_seed : {}", &pda, &bump_seed];
 
         let to_client_ix = &token_instruction::transfer(
             token_program.key,
