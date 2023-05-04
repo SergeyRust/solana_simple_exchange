@@ -1,25 +1,46 @@
 use borsh::BorshDeserialize;
 use solana_program::program_error::ProgramError;
 
-pub enum ExchangeInstruction {
-    SolToToken { amount: u64 },
-    TokenToSol { amount: u64 },
-    TokenToToken { amount: u64 }
+pub enum Instruction {
+    Deposit {
+        amount: u64,
+        pda_seed: [u8; 16],
+        bump_seed: u8
+    },
+    Withdraw { amount: u64,
+        pda_seed: [u8; 16],
+        bump_seed: u8
+    },
+    ExchangeSolToToken { amount: u64 },
+    ExchangeTokenToSol { amount: u64 },
+    ExchangeTokenToToken { amount: u64 }
 }
 
 #[derive(BorshDeserialize)]
 pub struct InstructionData {
-    amount: u64
+    amount: u64,
+    pda_seed: String,
+    bump_seed: u8
 }
 
-impl ExchangeInstruction {
+impl Instruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (&variant, rest) = input.split_first().ok_or(ProgramError::InvalidInstructionData)?;
         let payload = InstructionData::try_from_slice(rest)?;
         match variant {
-            0 => Ok( Self::SolToToken { amount: payload.amount } ),
-            1 => Ok( Self::TokenToSol { amount: payload.amount } ),
-            2 => Ok( Self::TokenToToken { amount: payload.amount }),
+            0 => Ok( Self::Deposit {
+                amount: payload.amount,
+                pda_seed: <[u8; 16]>::try_from(payload.pda_seed.into_bytes()).unwrap(),
+                bump_seed: payload.bump_seed
+            }),
+            1 => Ok( Self::Withdraw {
+                amount: payload.amount,
+                pda_seed: <[u8; 16]>::try_from(payload.pda_seed.into_bytes()).unwrap(),
+                bump_seed: payload.bump_seed
+            }),
+            2 => Ok( Self::ExchangeSolToToken { amount: payload.amount } ),
+            3 => Ok( Self::ExchangeTokenToSol { amount: payload.amount } ),
+            4 => Ok( Self::ExchangeTokenToToken { amount: payload.amount }),
             _ => Err(ProgramError::InvalidInstructionData)
         }
     }
