@@ -1,6 +1,5 @@
 use spl_token::error::TokenError;
 use {
-    crate::processor,
     solana_program::{
         account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
         program_error::PrintProgramError, pubkey::Pubkey,
