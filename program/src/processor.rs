@@ -228,20 +228,23 @@ impl Processor {
     let token_B_data_feed_account = next_account_info(accounts_iter)?;
     // программа, взаимодействующая с oracles
     let chainlink_program = next_account_info(accounts_iter)?;
-    let token_A = Self::get_token_price_and_description(
+    let token_A_data = Self::get_token_data(
         &chainlink_program.clone(),
         &token_A_data_feed_account.clone()
     )?;
-    let token_B = Self::get_token_price_and_description(
+    let token_B_data = Self::get_token_data(
         &chainlink_program.clone(),
         &token_B_data_feed_account.clone()
     )?;
 
-    let lamport_price = token_A.0 / f64::from_u64(LAMPORTS_PER_SOL).unwrap();
-    let token_A_amount = amount;
-    let token_B_amount = ((f64::from_u64(amount).unwrap() * lamport_price) / token_B.0) as u64;
-    msg!["exchanging tokens : token A: {}, amount={}, token B : {}, amount={}",
-                              &token_A.1, &token_A_amount / LAMPORTS_PER_SOL, &token_B.1,  &token_B_amount];
+    //let lamport_price = token_A_data.price / f64::from_u64(LAMPORTS_PER_SOL).unwrap();
+    let token_A_amount = f64::from_u64(amount).unwrap() / LAMPORTS_PER_SOL as f64;
+    let token_B_amount = (token_A_amount * token_A_data.price) / token_B_data.price;
+    msg!["exchanging tokens : token A: {}, amount = {}, token B : {}, amount = {}",
+        &token_A_data.description,
+        &token_A_amount ,
+        &token_B_data.description,
+        &token_B_amount];
 
     let from_client_ix = &token_instruction::transfer(
         token_program.key,
@@ -249,7 +252,7 @@ impl Processor {
         exchange_token_A_account.key,
         client_wallet.key,
         &[client_wallet.key, exchange_wallet.key],
-        token_A_amount
+        amount
     )?;
     invoke(
         from_client_ix,
@@ -263,41 +266,27 @@ impl Processor {
         ]
     )?;
 
-    let (_, bump_seed) = Pubkey::find_program_address(
-        &[
-            &exchange_wallet.key.to_bytes(),
-            &token_program.key.to_bytes(),
-            &mint_A.key.to_bytes(),
-        ],
-        program_id
-    );
-    //msg!("exchange_associated_token_B_account : {}, client_associated_token_B_account : {}, ");
     let to_client_ix = &token_instruction::transfer(
         token_program.key,
         exchange_associated_token_B_account.key,
         client_associated_token_B_account.key,
-        exchange_program_account.key,
-        &[],
-        token_B_amount
+        exchange_wallet.key,
+        &[exchange_wallet.key, client_wallet.key],
+        (token_B_amount * (10.pow(token_B_data.decimals as u32) as f64)) as u64
     )?;
-    invoke_signed(to_client_ix,
+    invoke(to_client_ix,
                   &[
                       mint_B.clone(),
                       exchange_associated_token_B_account.clone(),
                       client_associated_token_B_account.clone(),
-                      exchange_program_account.clone(),
+                      exchange_wallet.clone(),
+                      client_wallet.clone(),
                       token_program.clone()
-                  ],
-                  &[&[
-                      &exchange_wallet.key.to_bytes(),
-                      &token_program.key.to_bytes(),
-                      &mint_A.key.to_bytes(),
-                      &[bump_seed]
-                  ]]
+                  ]
         )?;
+
     Ok(())
     }
-
 
     #[allow(non_snake_case)]
     fn exchange_token_to_sol(
@@ -322,20 +311,23 @@ impl Processor {
         let token_B_data_feed_account = next_account_info(accounts_iter)?;
         // программа, взаимодействующая с oracles
         let chainlink_program = next_account_info(accounts_iter)?;
-        let token_A = Self::get_token_price_and_description(
+        let token_A_data = Self::get_token_data(
             &chainlink_program.clone(),
             &token_A_data_feed_account.clone()
         )?;
-        let token_B = Self::get_token_price_and_description(
+        let token_B_data = Self::get_token_data(
             &chainlink_program.clone(),
             &token_B_data_feed_account.clone()
         )?;
 
-        let lamport_price = token_B.0 / f64::from_u64(LAMPORTS_PER_SOL).unwrap();
-        let token_A_amount = amount;
-        let token_B_amount = ((f64::from_u64(amount).unwrap()) / token_B.0 * lamport_price) as u64;
+        let lamport_price = token_B_data.price / f64::from_u64(LAMPORTS_PER_SOL).unwrap();
+        let token_A_amount = amount / (10.pow(token_A_data.decimals as u32) as u64);
+        let token_B_amount = ((f64::from_u64(amount).unwrap()) * token_A_data.price / token_B_data.price * lamport_price) as u64;
         msg!["exchanging tokens : token A: {}, amount={}, token B : {}, amount={}",
-                              &token_A.1, &token_A_amount, &token_B.1,  &token_B_amount / LAMPORTS_PER_SOL];
+            &token_A_data.description,
+            &token_A_amount,
+            &token_B_data.description,
+            &token_B_amount / LAMPORTS_PER_SOL];
 
         let from_client_ix = &token_instruction::transfer(
             token_program.key,
@@ -356,37 +348,23 @@ impl Processor {
                 token_program.clone(),
             ]
         )?;
-
-        let (_, bump_seed) = Pubkey::find_program_address(
-            &[
-                &exchange_wallet.key.to_bytes(),
-                &token_program.key.to_bytes(),
-                &mint_A.key.to_bytes(),
-            ],
-            program_id
-        );
-
         let to_client_ix = &token_instruction::transfer(
             token_program.key,
             exchange_token_B_account.key,
             client_token_B_account.key,
-            exchange_program_account.key,
-            &[],
+            exchange_wallet.key,
+            &[exchange_wallet.key, client_wallet.key],
             token_B_amount
         )?;
-        invoke_signed(to_client_ix,
+        invoke(to_client_ix,
                       &[
+                          mint_B.clone(),
                           exchange_token_B_account.clone(),
                           client_token_B_account.clone(),
-                          exchange_program_account.clone(),
+                          exchange_wallet.clone(),
+                          client_wallet.clone(),
                           token_program.clone()
-                      ],
-                      &[&[
-                          &exchange_wallet.key.to_bytes(),
-                          &token_program.key.to_bytes(),
-                          &mint_A.key.to_bytes(),
-                          &[bump_seed]
-                      ]]
+                      ]
         )?;
         Ok(())
     }
@@ -414,19 +392,22 @@ impl Processor {
         let token_B_data_feed_account = next_account_info(accounts_iter)?;
         // программа, взаимодействующая с oracles
         let chainlink_program = next_account_info(accounts_iter)?;
-        let token_A = Self::get_token_price_and_description(
+        let token_A_data = Self::get_token_data(
             &chainlink_program.clone(),
             &token_A_data_feed_account.clone()
         )?;
-        let token_B = Self::get_token_price_and_description(
+        let token_B_data = Self::get_token_data(
             &chainlink_program.clone(),
             &token_B_data_feed_account.clone()
         )?;
 
         let token_A_amount = amount;
-        let token_B_amount = ((f64::from_u64(amount).unwrap()) / token_B.0) as u64;
-        msg!["exchanging tokens : token A: {}, amount={}, token B : {}, amount={}",
-                                  &token_A.1, &token_B.1, &token_A_amount, &token_B_amount];
+        let token_B_amount = ((f64::from_u64(amount).unwrap()) / token_B_data.price) as u64;
+        msg!["exchanging tokens : token A: {}, amount= {}, token B : {}, amount={}",
+            &token_A_data.description,
+            &token_A_amount,
+            &token_B_data.description,
+            &token_B_amount];
 
         let from_client_ix = &token_instruction::transfer(
             token_program.key,
@@ -484,10 +465,10 @@ impl Processor {
         Ok(())
     }
 
-    fn get_token_price_and_description<'a>(
+    fn get_token_data<'a>(
         chainlink_program: &AccountInfo<'a>,
         data_feed_program: &AccountInfo<'a>)
-        -> Result<(f64, String), ProgramError>
+        -> Result<TokenData, ProgramError>
     {
         let oracle_data = {
             let round = chainlink::latest_round_data(
@@ -513,10 +494,21 @@ impl Processor {
                 f64::from_i128(10_i128.pow(oracle_data.1 as u32)).unwrap();
             let trim_usd = oracle_data.2.len() - 6;
             let (token, _) = oracle_data.2.split_at(trim_usd);
-            msg!("price of token {} is {}", token , price);
-            Ok((price, String::from(token)))
+            msg!("price of token {} is {} USD", &token , price);
+            Ok(
+                TokenData {
+                price,
+                decimals: oracle_data.1,
+                description: String::from(token),
+            })
         } else {
             Err(ProgramError::from(TokenError::OracleDataFeedError))
         }
     }
+}
+
+struct TokenData {
+    price: f64,
+    decimals: u8,
+    description: String,
 }

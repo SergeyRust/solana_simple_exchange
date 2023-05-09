@@ -205,21 +205,6 @@ describe("Test1", async () => {
 
     it("Exchange sol to USDC", async () => {
 
-        const exchangeUsdcAssociatedTokenAddress = await getAssociatedTokenAddress(
-            CUSTOM_MINT,
-            exchangeProgram
-        );
-        console.log("exchangeUsdcAssociatedTokenAddress : %s ", exchangeUsdcAssociatedTokenAddress);
-        const programAddress = findProgramAddressSync(
-            [
-                exchangeWallet.publicKey.toBuffer(),
-                token_program_id.toBuffer(),
-                CUSTOM_MINT.toBuffer(),
-            ],
-            exchangeProgram
-        );
-        console.log("USDC program address : %s , bump_seed: %d", programAddress.at(0), programAddress.at(1));
-
         const instructionData = borsh.struct([
             borsh.u8('variant'),
             borsh.u64('amount'),
@@ -227,7 +212,7 @@ describe("Test1", async () => {
             borsh.u8('bump_seed')
         ])
         const buffer = Buffer.alloc(1000);
-        const value = new anchor.BN(50000000);
+        const value = new anchor.BN(100000000);
         instructionData.encode(
             {
                 variant: 2,
@@ -247,7 +232,7 @@ describe("Test1", async () => {
                 {pubkey: clientUsdcAssociatedTokenAccount, isSigner: false, isWritable: true},
                 {pubkey: exchangeWallet.publicKey, isSigner: true, isWritable: true},
                 {pubkey: exchangeWrappedSolAccount, isSigner: false, isWritable: true},
-                {pubkey: exchangeUsdcAssociatedTokenAddress, isSigner: false, isWritable: true},
+                {pubkey: exchangeUsdcAssociatedTokenAccount, isSigner: false, isWritable: true},
                 {pubkey: solToUsdDataFeedAccount, isSigner: false, isWritable: false},
                 {pubkey: usdcToUsdDataFeedAccount, isSigner: false, isWritable: false},
                 {pubkey: chainLinkProgramId, isSigner: false, isWritable: false},
@@ -256,51 +241,32 @@ describe("Test1", async () => {
             programId: exchangeProgram,
         });
 
-        // const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-        //     units: 1000000
-        // });
-        let tx = new Transaction();
-        //tx.add(modifyComputeUnits);
-        //tx.recentBlockhash = (await connection.getLatestBlockhash('finalized')).blockhash;
-        tx.feePayer = payer.publicKey;
-        tx.add(ix);
-
-        let sim_result = await connection.simulateTransaction(tx);
-        console.log("logs : {}", sim_result.value.logs);
 
         // let tx = new Transaction();
-        // tx.recentBlockhash = (await connection.getLatestBlockhash('finalized')).blockhash;
-        // tx.feePayer = clientWallet.publicKey;
+        // tx.feePayer = payer.publicKey;
         // tx.add(ix);
         //
-        // let committed = await sendAndConfirmTransaction(
-        //     connection,
-        //     tx,
-        //     [clientWallet, exchangeWallet],
-        //     {
-        //         skipPreflight: true,
-        //         preflightCommitment : "finalized"
-        //     }
-        // );
-        // console.log("transaction: {}", committed)
+        // let sim_result = await connection.simulateTransaction(tx);
+        // console.log("logs : {}", sim_result.value.logs);
+
+        let tx = new Transaction();
+        tx.recentBlockhash = (await connection.getLatestBlockhash('finalized')).blockhash;
+        tx.feePayer = clientWallet.publicKey;
+        tx.add(ix);
+
+        let committed = await sendAndConfirmTransaction(
+            connection,
+            tx,
+            [clientWallet, exchangeWallet],
+            {
+                skipPreflight: true,
+                preflightCommitment : "finalized"
+            }
+        );
+        console.log("transaction: {}", committed)
     });
 
     it("Exchange USDC to sol", async () => {
-
-        const exchangeUsdcAssociatedTokenAddress = await getAssociatedTokenAddress(
-            CUSTOM_MINT,
-            exchangeProgram
-        );
-        console.log("exchangeUsdcAssociatedTokenAddress : %s ", exchangeUsdcAssociatedTokenAddress);
-        const programAddress = findProgramAddressSync(
-            [
-                exchangeWallet.publicKey.toBuffer(),
-                token_program_id.toBuffer(),
-                CUSTOM_MINT.toBuffer(),
-            ],
-            exchangeProgram
-        );
-        console.log("USDC program address : %s , bump_seed: %d", programAddress.at(0), programAddress.at(1));
 
         const instructionData = borsh.struct([
             borsh.u8('variant'),
@@ -328,10 +294,10 @@ describe("Test1", async () => {
                 {pubkey: clientUsdcAssociatedTokenAccount, isSigner: false, isWritable: true},
                 {pubkey: clientWrappedSolAccount, isSigner: false, isWritable: true},
                 {pubkey: exchangeWallet.publicKey, isSigner: true, isWritable: true},
-                {pubkey: exchangeUsdcAssociatedTokenAddress, isSigner: false, isWritable: true},
+                {pubkey: exchangeUsdcAssociatedTokenAccount, isSigner: false, isWritable: true},
                 {pubkey: exchangeWrappedSolAccount, isSigner: false, isWritable: true},
-                {pubkey: solToUsdDataFeedAccount, isSigner: false, isWritable: false},
                 {pubkey: usdcToUsdDataFeedAccount, isSigner: false, isWritable: false},
+                {pubkey: solToUsdDataFeedAccount, isSigner: false, isWritable: false},
                 {pubkey: chainLinkProgramId, isSigner: false, isWritable: false},
             ],
             data: instructionBuffer,
