@@ -85,9 +85,7 @@ describe("Test1", async () => {
     const system_program_id = new PublicKey(
         "11111111111111111111111111111111"
     );
-    // const clientWallet = new PublicKey(
-    //     "8kzvhvtMbRv36zgBp7ezfEZb8kL2usQpjHXDBjbGh83e"
-    // );
+
     const clientWallet = createKeypairFromFile(require('os').homedir() + '/my-solana-wallet/client1.json');
     const clientWrappedSolAccount = new PublicKey(
         "CsrhZBzHFwbn1LcAQDgvBE2KxPpgeQwj2Ur22qPrewFx"
@@ -100,10 +98,6 @@ describe("Test1", async () => {
         "AJc7EGu6pcN62sh1QmDkp4qqUMSEk6kMmLbq8PmHFZAP"
     );
 
-
-    // const exchangeWallet = new PublicKey(
-    //   "8CuWXnVSPR83xJeF5oZzwLEQamgx1YoRWsjvDRwD3GBP" //
-    // );
     const exchangeWallet = createKeypairFromFile(require('os').homedir() + '/my-solana-wallet/exchange/wallet1.json');
     const exchangeWrappedSolAccount = new PublicKey(
         "HNeSrHNCXf4YFZJbaRBMWpK8pfQ1xogDUXon3grjzE8D"

@@ -86,7 +86,7 @@ impl Processor {
         let pda_token_account = next_account_info(accounts_iter)?;
         let exchange_program_account = next_account_info(accounts_iter)?;
 
-        if !exchange_wallet.is_signer {
+        if !&exchange_wallet.is_signer {
             msg!("Missing required signature");
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -164,7 +164,7 @@ impl Processor {
         let pda_token_account = next_account_info(accounts_iter)?;
         let exchange_program_account = next_account_info(accounts_iter)?;
 
-        if !exchange_wallet.is_signer {
+        if !&exchange_wallet.is_signer {
             msg!("Missing required signature");
             return Err(ProgramError::MissingRequiredSignature);
         }
